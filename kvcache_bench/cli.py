@@ -22,6 +22,7 @@ def main():
     parser.add_argument("--prompts", "-p", default="short,code,reasoning",
                         help="Prompt types: short,code,reasoning,long,tool_call")
     parser.add_argument("--json", "-j", help="Save results to JSON file")
+    parser.add_argument("--charts", action="store_true", help="Generate comparison charts (requires matplotlib)")
     parser.add_argument("--no-restart", action="store_true",
                         help="Don't restart Ollama between tests (use current KV type)")
     parser.add_argument("--list-models", action="store_true", help="List available Ollama models")
@@ -91,6 +92,15 @@ def main():
         with open(out_path, "w") as f:
             json.dump([asdict(r) for r in results], f, indent=2)
         print(f"\nResults saved to {out_path}")
+
+    # Charts
+    if args.charts and args.json:
+        try:
+            from kvcache_bench.charts import generate_charts
+            print("\nGenerating charts...")
+            generate_charts(args.json)
+        except ImportError:
+            print("\nCharts require matplotlib: pip install matplotlib")
 
     # Summary
     if results:
