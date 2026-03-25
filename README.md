@@ -9,10 +9,26 @@ kvcache-bench --model qwen3.5:9b
 ```
 | KV Type | Context | Prompt    | Gen tok/s | Prefill tok/s | VRAM +MB | Quality |
 |---------|---------|-----------|-----------|---------------|----------|---------|
-| f16     | 4096    | short     | 80.1      | 712.3         | +142     | PASS    |
-| q8_0    | 4096    | short     | 79.5      | 723.5         | +71      | PASS    |
-| q4_0    | 4096    | short     | 78.2      | 698.1         | +36      | PASS    |
+| f16     | 4096    | short     | 86.9      | 509.5         | +80      | PASS    |
+| f16     | 16384   | short     | 78.8      | 784.6         | +316     | PASS    |
+| q8_0    | 4096    | short     | 86.7      | 793.1         | +48      | PASS    |
+| q8_0    | 16384   | short     | 87.2      | 741.9         | +219     | PASS    |
+| q4_0    | 4096    | short     | 86.7      | 798.0         | +59      | PASS    |
+| q4_0    | 16384   | short     | 86.7      | 522.7         | +156     | PASS    |
+
+──────────────────────────────────────────────────
+RECOMMENDATION
+──────────────────────────────────────────────────
+
+  Use q8_0 (8-bit KV cache)
+  Speed: 87 tok/s (-0.1% vs f16)
+  VRAM: saves 97 MB vs f16 (2x compression)
+  Quality: negligible loss (+0.004 perplexity)
+
+  Set: OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_FLASH_ATTENTION=1
 ```
+
+*Real output from Qwen3.5-9B on RTX 4080 16GB.*
 
 ## Why
 

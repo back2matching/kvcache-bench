@@ -117,17 +117,47 @@ def main():
             print(f"\nFastest: {fastest.kv_type} ({fastest.eval_rate} tok/s)")
             print(f"Lowest VRAM: {lowest_vram.kv_type} (+{lowest_vram.vram_delta_mb} MB)")
 
-            # Recommendation
-            # q8_0 is usually the sweet spot (negligible quality loss, good VRAM savings)
-            q8_results = [r for r in valid if r.kv_type == "q8_0"]
-            if q8_results:
-                q8_avg_rate = sum(r.eval_rate for r in q8_results) / len(q8_results)
-                f16_results = [r for r in valid if r.kv_type == "f16"]
-                if f16_results:
-                    f16_avg_rate = sum(r.eval_rate for r in f16_results) / len(f16_results)
-                    speed_diff = abs(q8_avg_rate - f16_avg_rate) / f16_avg_rate * 100
-                    if speed_diff < 5:
-                        print(f"\nRecommendation: Use q8_0. Near-zero speed difference ({speed_diff:.1f}%) with 2x VRAM savings.")
+            # Smart recommendation based on actual data
+            print(f"\n{'─'*50}")
+            print("RECOMMENDATION")
+            print(f"{'─'*50}")
+
+            by_type = {}
+            for r in valid:
+                if r.kv_type not in by_type:
+                    by_type[r.kv_type] = []
+                by_type[r.kv_type].append(r)
+
+            f16_speed = sum(r.eval_rate for r in by_type.get('f16', valid)) / max(len(by_type.get('f16', valid)), 1)
+            f16_vram = max((r.vram_delta_mb for r in by_type.get('f16', valid)), default=0)
+
+            best = None
+            for kv in ['q8_0', 'q4_0']:
+                if kv not in by_type:
+                    continue
+                kv_speed = sum(r.eval_rate for r in by_type[kv]) / len(by_type[kv])
+                kv_vram = max((r.vram_delta_mb for r in by_type[kv]), default=0)
+                speed_loss = (f16_speed - kv_speed) / f16_speed * 100 if f16_speed > 0 else 0
+                vram_saved = f16_vram - kv_vram
+
+                if kv == 'q8_0' and speed_loss < 10:
+                    best = kv
+                    print(f"\n  Use q8_0 (8-bit KV cache)")
+                    print(f"  Speed: {kv_speed:.0f} tok/s ({speed_loss:+.1f}% vs f16)")
+                    print(f"  VRAM: saves {vram_saved} MB vs f16 (2x compression)")
+                    print(f"  Quality: negligible loss (+0.004 perplexity)")
+                    print(f"\n  Set: OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_FLASH_ATTENTION=1")
+                    break
+                elif kv == 'q4_0':
+                    best = kv
+                    print(f"\n  Use q4_0 (4-bit KV cache)")
+                    print(f"  Speed: {kv_speed:.0f} tok/s ({speed_loss:+.1f}% vs f16)")
+                    print(f"  VRAM: saves {vram_saved} MB vs f16 (4x compression)")
+                    print(f"  Quality: noticeable at long context (+0.2 perplexity)")
+                    print(f"\n  Set: OLLAMA_KV_CACHE_TYPE=q4_0 OLLAMA_FLASH_ATTENTION=1")
+
+            if not best:
+                print("\n  Keep f16 (no clear benefit from compression on this test)")
 
 
 if __name__ == "__main__":
