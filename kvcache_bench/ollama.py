@@ -74,6 +74,7 @@ def run_inference(
                     "num_ctx": num_ctx,
                     "num_predict": max_tokens,
                     "temperature": temperature,
+                    "think": False,
                 },
             },
             timeout=300,
@@ -99,6 +100,7 @@ def run_chat(
             "num_ctx": num_ctx,
             "num_predict": max_tokens,
             "temperature": 0.0,
+            "think": False,
         },
     }
     if tools:
